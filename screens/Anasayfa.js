@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, Image, SafeAreaView, ScrollView, ActivityIndicator } from 'react-native';
-import { useNavigation, CommonActions, useFocusEffect } from '@react-navigation/native';
-import { removeItem } from '../utils/asyncStorage';
-import { resetDatabase } from '../database/reset';
+import { StyleSheet, Text, View, Image, SafeAreaView, ScrollView, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { getRandomWord, getRandomIdiom, openDatabase } from '../database/database';
 import PagerView from 'react-native-pager-view';
 
@@ -11,10 +9,26 @@ const Anasayfa = () => {
     const [randomWord, setRandomWord] = useState(null);
     const [randomIdiom, setRandomIdiom] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [db, setDb] = useState(null);
+
+    // Veritabanı bağlantısını başlat
+    useEffect(() => {
+        const initializeDatabase = async () => {
+            try {
+                const database = await openDatabase();
+                setDb(database);
+            } catch (error) {
+                console.error('Veritabanı bağlantısı sırasında bir hata oluştu:', error);
+            }
+        };
+
+        initializeDatabase();
+    }, []);
 
     const fetchData = async () => {
+        if (!db) return;
+
         try {
-            const db = await openDatabase();
             const word = await getRandomWord(db);
             const idiom = await getRandomIdiom(db);
             setRandomWord(word);
@@ -28,33 +42,14 @@ const Anasayfa = () => {
 
     useEffect(() => {
         fetchData();
-    }, []);
-
-    const handleDatabaseReset = async () => {
-        try {
-            await resetDatabase();
-            console.log('Veritabanı sıfırlandı.');
-        } catch (error) {
-            console.error('Veritabanı sıfırlama sırasında bir hata oluştu:', error);
-        }
-    };
-
-    const handleOnboardingReset = async () => {
-        try {
-            await removeItem('onboarded');
-            navigation.dispatch(
-                CommonActions.reset({
-                    index: 0,
-                    routes: [{ name: 'OnboardingScreen' }],
-                })
-            );
-        } catch (error) {
-            console.error('Onboarding sıfırlama sırasında bir hata oluştu:', error);
-        }
-    };
+    }, [db]);
 
     const handleNavigation = (screenName) => {
         navigation.navigate(screenName);
+    };
+
+    const handleBackToOnboarding = () => {
+        navigation.navigate('OnboardingScreen'); // Onboarding sayfasının route adını kullanın
     };
 
     const carouselItems = [
@@ -87,6 +82,9 @@ const Anasayfa = () => {
         <SafeAreaView style={styles.container}>
             <View style={styles.navbar}>
                 <Image source={require('../assets/logo.png')} style={styles.logo} />
+                <TouchableOpacity style={styles.backButton} onPress={handleBackToOnboarding}>
+                    <Text style={styles.backButtonText}>Onboarding'a Dön</Text>
+                </TouchableOpacity>
             </View>
             <ScrollView contentContainerStyle={styles.scrollContainer}>
                 <View style={styles.pagerContainer}>
@@ -146,7 +144,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: 0,
+        paddingHorizontal: 15,
         borderBottomWidth: 1,
         borderBottomColor: '#E0E0E0',
     },
@@ -155,6 +153,16 @@ const styles = StyleSheet.create({
         height: 80,
         resizeMode: 'contain',
         marginRight: 'auto'
+    },
+    backButton: {
+        backgroundColor: '#FFD700',
+        borderRadius: 5,
+        padding: 10,
+    },
+    backButtonText: {
+        color: '#000',
+        fontSize: 16,
+        fontFamily: 'poppins-bold',
     },
     loadingIndicator: {
         flex: 1,
@@ -215,23 +223,21 @@ const styles = StyleSheet.create({
     },
     headerText: {
         fontSize: 20,
-        fontFamily: 'poppins-bold',
-        marginBottom: 10,
-        flexDirection: 'row',
-        flexWrap: 'wrap',
+        fontFamily: 'poppins-regular',
+        color: 'white',
     },
     headerTextHighlight: {
-        color: '#FFD700',
         fontSize: 20,
         fontFamily: 'poppins-bold',
+        color: '#FFD700',
     },
     headerTextRest: {
-        color: 'white',
         fontSize: 20,
-        fontFamily: 'poppins-bold',
+        fontFamily: 'poppins-regular',
+        color: 'white',
     },
     label: {
-        fontStyle: 'italic',
-        color: '#FFD700',
+        fontWeight: 'bold',
+        color: '#FFD700'
     },
 });

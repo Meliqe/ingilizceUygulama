@@ -1,17 +1,15 @@
 import * as SQLite from 'expo-sqlite';
 
-// Veritabanını aç
-export const openDatabase = async () => {
+export async function openDatabase() {
     try {
         const db = await SQLite.openDatabaseAsync('englishDB.db');
-        console.log("Database opened:", db);
+        console.log('Database object:', db); // Bu satırı ekleyin
         return db;
     } catch (error) {
-        console.error('Error opening database:', error);
+        console.error('Veritabanı açılırken hata oluştu:', error);
+        throw error;
     }
-};
-
-// Veritabanını başlatma ve tablo oluşturma
+}
 export async function initializeDatabase(db) {
     try {
         await db.execAsync(`
@@ -97,7 +95,6 @@ export async function updateWord(db, id, wordText, meaning, level, usage, usageM
     }
 }
 
-
 // Kelime silme
 export async function deleteWord(db, id) {
     const deleteStatement = await db.prepareAsync(
@@ -168,7 +165,6 @@ export async function updateIdiom(db, id, idiomText, meaning, usage, usageMeanin
     }
 }
 
-
 // Deyim silme
 export async function deleteIdiom(db, id) {
     const deleteStatement = await db.prepareAsync(
@@ -196,7 +192,6 @@ export async function getRandomWord(db) {
     }
 }
 
-
 export async function getRandomIdiom(db) {
     const selectStatement = await db.prepareAsync('SELECT * FROM idioms ORDER BY RANDOM() LIMIT 1');
     try {
@@ -208,7 +203,6 @@ export async function getRandomIdiom(db) {
         await selectStatement.finalizeAsync();
     }
 }
-
 
 // Hem kelimenin hem de anlamın mevcut olup olmadığını kontrol et (büyük/küçük harf duyarsız)
 export async function checkWordExists(db, word, meaning) {
@@ -240,19 +234,3 @@ export async function checkIdiomExists(db, idiom, meaning) {
         return false;
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

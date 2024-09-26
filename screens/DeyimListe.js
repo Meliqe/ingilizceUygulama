@@ -129,7 +129,7 @@ const styles = StyleSheet.create({
         shadowRadius: 3,
     },
     itemContent: {
-        flexDirection: 'row',
+        flexDirection: 'column',
         justifyContent: 'space-between',
         alignItems: 'center',
     },

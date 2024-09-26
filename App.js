@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { View, ActivityIndicator } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import * as Font from 'expo-font';
@@ -15,11 +14,29 @@ import DeyimListe from './screens/DeyimListe';
 import QuizDeyim from './screens/QuizDeyim';
 import { UpdateProvider } from './context/UpdateContext';
 import { getItem, setItem } from './utils/asyncStorage';
+import * as FileSystem from 'expo-file-system';
+import { Asset } from 'expo-asset';
 import { openDatabase, initializeDatabase } from './database/database';
-import { SQLiteProvider } from 'expo-sqlite';
 import LoadingScreen from './screens/LoadingScreen';
+import { SQLiteProvider } from 'expo-sqlite';
 
 const Stack = createStackNavigator();
+
+const loadDatabase = async () => {
+  const dbName = "englishDB.db";
+  const dbAsset = require("./assets/englishDB.db");
+  const dbUri = Asset.fromModule(dbAsset).uri;
+  const dbFilePath = `${FileSystem.documentDirectory}SQLite/${dbName}`;
+
+  const fileInfo = await FileSystem.getInfoAsync(dbFilePath);
+  if (!fileInfo.exists) {
+    await FileSystem.makeDirectoryAsync(
+      `${FileSystem.documentDirectory}SQLite`,
+      { intermediates: true }
+    );
+    await FileSystem.downloadAsync(dbUri, dbFilePath);
+  }
+};
 
 const fetchFonts = () => {
   return Font.loadAsync({
@@ -34,45 +51,29 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [isOnboarding, setIsOnboarding] = useState(false);
   const [fontsLoaded, setFontsLoaded] = useState(false);
+  const [dbLoaded, setDbLoaded] = useState(false);
 
   useEffect(() => {
-    const onInit = async () => {
+    const initializeApp = async () => {
       try {
         await fetchFonts();
         setFontsLoaded(true);
-        const db = await openDatabase();
-        await checkTablesExist(db);
+        await loadDatabase();
+
+        // Veritabanı bağlantısını al
+        const db = await openDatabase(); // openDatabase() fonksiyonunu çağırarak db'yi al
+        await initializeDatabase(db); // Veritabanını başlat
+
+        setDbLoaded(true);
         await checkOnboarding();
       } catch (error) {
-        console.error('OnInit sırasında bir hata oluştu:', error);
+        console.error('App initialization error:', error);
       } finally {
         setIsLoading(false);
       }
     };
-
-    onInit();
+    initializeApp();
   }, []);
-
-  const checkTablesExist = async (db) => {
-    try {
-      await db.withTransactionAsync(async () => {
-        const result = await db.getAllAsync(`
-          SELECT name FROM sqlite_master WHERE type='table';
-        `);
-
-        if (result && result.length > 0) {
-          const tableNames = result.map(row => row.name);
-          if (!tableNames.includes('words') || !tableNames.includes('idioms')) {
-            await initializeDatabase(db);
-          }
-        } else {
-          await initializeDatabase(db);
-        }
-      });
-    } catch (error) {
-      console.error('Tablo kontrolü sırasında bir hata oluştu:', error);
-    }
-  };
 
   const checkOnboarding = async () => {
     try {
@@ -92,14 +93,14 @@ export default function App() {
     }
   };
 
-  if (isLoading || !fontsLoaded) {
+  if (isLoading || !fontsLoaded || !dbLoaded) {
     return <LoadingScreen />;
   }
 
   return (
-    <SQLiteProvider databaseName="englishDB.db">
-      <UpdateProvider>
-        <NavigationContainer>
+    <SQLiteProvider databaseName="englishDB.db" >
+      <NavigationContainer>
+        <UpdateProvider>
           <Stack.Navigator initialRouteName={isOnboarding ? 'OnboardingScreen' : 'Anasayfa'}>
             <Stack.Screen
               name='Anasayfa'
@@ -121,8 +122,9 @@ export default function App() {
             <Stack.Screen name='DeyimListe' component={DeyimListe} options={{ headerShown: false }} />
             <Stack.Screen name='QuizDeyim' component={QuizDeyim} options={{ headerShown: false }} />
           </Stack.Navigator>
-        </NavigationContainer>
-      </UpdateProvider>
+        </UpdateProvider>
+      </NavigationContainer>
     </SQLiteProvider>
   );
 }
+
